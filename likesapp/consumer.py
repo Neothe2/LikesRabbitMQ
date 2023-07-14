@@ -20,7 +20,9 @@ def callback(ch, method, properties, body):
     print("Received in likes...")
     print(body)
     data = json.loads(body)
+
     print(data)
+    print('hi')
 
     if properties.content_type == 'quote_created':
         quote = Quote.objects.create(id=data['id'], title=data['title'])
