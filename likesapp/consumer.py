@@ -1,4 +1,7 @@
 import json
+import threading
+import time
+
 import pika
 import django
 from sys import path
@@ -10,10 +13,7 @@ environ.setdefault('DJANGO_SETTINGS_MODULE', 'Likes.settings')
 django.setup()
 from likesapp.models import Quote
 
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters('localhost', heartbeat=600, blocked_connection_timeout=300))
-channel = connection.channel()
-channel.queue_declare(queue='likes')
+
 
 
 def callback(ch, method, properties, body):
@@ -39,6 +39,27 @@ def callback(ch, method, properties, body):
         print("quote deleted")
 
 
-channel.basic_consume(queue='likes', on_message_callback=callback, auto_ack=True)
-print("Started Consuming...")
-channel.start_consuming()
+
+
+def consume_messages():
+    while True:
+        try:
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters('localhost', heartbeat=600, blocked_connection_timeout=300))
+            channel = connection.channel()
+            channel.queue_declare(queue='likes')
+            channel.basic_consume(queue='likes', on_message_callback=callback, auto_ack=True)
+
+            print("Started Consuming...")
+            channel.start_consuming()
+
+        except pika.exceptions.AMQPConnectionError:
+            print("Connection was closed, retrying...")
+            time.sleep(10)
+
+consumer_thread = threading.Thread(target=consume_messages)
+consumer_thread.start()
+
+# channel.basic_consume(queue='likes', on_message_callback=callback, auto_ack=True)
+# print("Started Consuming...")
+# channel.start_consuming()
